@@ -15,7 +15,6 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.WebView
-import android.widget.ImageButton
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -56,12 +55,21 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // webview to show processus'peertube
+        loadWebViewPeertube()
+
+        startProcService()
+    }
+
+    private fun loadWebViewPeertube() {
         val myWebView: WebView = findViewById(R.id.procwebview)
         val webSettings = myWebView.settings
         @SuppressLint("SetJavaScriptEnabled")
         webSettings.javaScriptEnabled = true
         myWebView.loadUrl("https://peertube.lestutosdeprocessus.fr/videos/recently-added")
+    }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun startProcService() {
         Log.d("ProcService", "Starting ProcService from MainActivity")
         val jobInfo = JobInfo.Builder(11, ComponentName(this, ProcService::class.java))
             .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)

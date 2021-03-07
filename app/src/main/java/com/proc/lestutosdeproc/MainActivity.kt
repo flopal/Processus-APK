@@ -56,25 +56,22 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // webview to show processus'peertube
+        loadWebViewPeertube()
+
+        startProcService()
+    }
+
+    private fun loadWebViewPeertube() {
         val myWebView: WebView = findViewById(R.id.procwebview)
-
+        val webSettings = myWebView.settings
         @SuppressLint("SetJavaScriptEnabled")
-        myWebView.settings.javaScriptEnabled = true;
-        myWebView.settings.javaScriptCanOpenWindowsAutomatically = true;
+        webSettings.javaScriptEnabled = true
         myWebView.loadUrl("https://peertube.lestutosdeprocessus.fr/videos/recently-added")
+    }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun startProcService() {
         Log.d("ProcService", "Starting ProcService from MainActivity")
-        // launch both every X seconds + every 15 minutes
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            ProcService.scheduleJob(this)
-        } else {
-            Toast.makeText(
-                applicationContext,
-                "Your Android version is too old to run service...",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-        getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         val jobInfo = JobInfo.Builder(11, ComponentName(this, ProcService::class.java))
             .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
             .setPeriodic(TimeUnit.MINUTES.toMillis(15))
@@ -82,8 +79,8 @@ class MainActivity : AppCompatActivity() {
             .build()
         val scheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         scheduler.schedule(jobInfo)
-
     }
+
 
     // imagebutton for discord app
     fun discordButtonListener(view: View) {
