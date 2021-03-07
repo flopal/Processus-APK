@@ -44,6 +44,7 @@
                     android:layout_height="fill_parent"
                     android:background="@null"
                     android:contentDescription="@string/discord_img_button"
+                    android:onClick="discordButtonListener"
                     android:scaleType="fitEnd"
                     app:srcCompat="@drawable/discordicon" />
             </LinearLayout>
@@ -64,6 +65,7 @@
                     android:layout_height="fill_parent"
                     android:background="@null"
                     android:contentDescription="@string/email_image_button"
+                    android:onClick="emailButtonListener"
                     android:scaleType="fitCenter"
                     android:visibility="visible"
                     app:srcCompat="@drawable/mailv2" />

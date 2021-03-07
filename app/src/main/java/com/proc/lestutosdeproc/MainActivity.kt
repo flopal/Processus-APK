@@ -11,10 +11,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.WebView
-import android.widget.ImageButton
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
@@ -63,46 +63,6 @@ class MainActivity : AppCompatActivity() {
         myWebView.settings.javaScriptCanOpenWindowsAutomatically = true;
         myWebView.loadUrl("https://peertube.lestutosdeprocessus.fr/videos/recently-added")
 
-
-        // imagebutton for discord app
-        val discordButton: ImageButton = findViewById(R.id.discord)
-        discordButton.setOnClickListener {
-            try {
-                val url = "https://discord.gg/JJNxV2h"
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                startActivity(intent)
-            } catch (ex: ActivityNotFoundException) {
-                Toast.makeText(
-                    applicationContext,
-                    "There are no web clients installed.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-
-
-        // imagebutton for mail app
-        val mailButton: ImageButton = findViewById(R.id.mail)
-        mailButton.setOnClickListener {
-            val i = Intent(Intent.ACTION_SEND)
-            i.type = "message/rfc822"
-            i.putExtra(Intent.EXTRA_EMAIL, arrayOf("processus@thiefin.fr"))
-            i.putExtra(Intent.EXTRA_SUBJECT, "Email via l'application Android")
-            i.putExtra(Intent.EXTRA_TEXT, "")
-            try {
-                startActivity(Intent.createChooser(i, "Send mail..."))
-            } catch (ex: ActivityNotFoundException) {
-                Toast.makeText(
-                    applicationContext,
-                    "There are no email clients installed.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-
-
-
-
         Log.d("ProcService", "Starting ProcService from MainActivity")
         // launch both every X seconds + every 15 minutes
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -123,6 +83,39 @@ class MainActivity : AppCompatActivity() {
         val scheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         scheduler.schedule(jobInfo)
 
+    }
+
+    // imagebutton for discord app
+    fun discordButtonListener(view: View) {
+        try {
+            val url = "https://discord.gg/JJNxV2h"
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (ex: ActivityNotFoundException) {
+            Toast.makeText(
+                applicationContext,
+                "There are no web clients installed.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    // imagebutton for mail app
+    fun emailButtonListener(view: View) {
+        val i = Intent(Intent.ACTION_SEND)
+        i.type = "message/rfc822"
+        i.putExtra(Intent.EXTRA_EMAIL, arrayOf("processus@thiefin.fr"))
+        i.putExtra(Intent.EXTRA_SUBJECT, "Email via l'application Android")
+        i.putExtra(Intent.EXTRA_TEXT, "")
+        try {
+            startActivity(Intent.createChooser(i, "Send mail..."))
+        } catch (ex: ActivityNotFoundException) {
+            Toast.makeText(
+                applicationContext,
+                "There are no email clients installed.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
 }
