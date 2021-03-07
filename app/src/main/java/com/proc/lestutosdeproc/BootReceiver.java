@@ -9,11 +9,12 @@ import android.util.Log;
 import androidx.annotation.RequiresApi;
 
 public class BootReceiver extends BroadcastReceiver {
+    private final String TAG = "Proc BootReceiver";
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.i("ProcService", "Boot completed");
+        Log.i(TAG, "Boot completed");
         ProcService.scheduleJob(context);
     }
 

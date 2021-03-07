@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">LesTutosdeProc</string>
+    <string name="discord_img_button">Bouton de redirection pour accéder au discord</string>
+    <string name="email_image_button">Envoyer un email via l\'application</string>
 </resources>

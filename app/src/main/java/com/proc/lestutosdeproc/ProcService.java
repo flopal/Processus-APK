@@ -1,6 +1,5 @@
 package com.proc.lestutosdeproc;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -13,7 +12,6 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -23,11 +21,8 @@ import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
 
 import org.xml.sax.ContentHandler;
 
@@ -42,19 +37,18 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 
 @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 public class ProcService extends JobService {
 
     private ContentHandler handler;
+    private final String TAG = "Proc ProcService";
 
     @Override
     public boolean onStopJob(JobParameters params) {
         //Toast.makeText(this, "Stopping ProcService onStartJob", Toast.LENGTH_SHORT).show();
-        Log.d("ProcService", "Stopping ProcService onStartJob");
+        Log.d(TAG, "Stopping ProcService onStartJob");
         return true;
     }
 
@@ -70,7 +64,6 @@ public class ProcService extends JobService {
         JobScheduler jobScheduler = context.getSystemService(JobScheduler.class);
         jobScheduler.schedule(jobInbo);
     }
-
 
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -103,7 +96,7 @@ public class ProcService extends JobService {
 
 
             // End of debug
-            Log.d("ProcService", "Starting ProcService onStartJob");
+            Log.d(TAG, "Starting ProcService onStartJob");
 
             // retrieving last video on peertube.lestutosdeprocessus.fr
             // https://lestutosdeprocessus.fr/get_last_video_on_peertube.php
@@ -132,10 +125,9 @@ public class ProcService extends JobService {
                 InputStream is = connection.getInputStream();
                 BufferedReader rd = new BufferedReader(new InputStreamReader(is));
                 String line;
-                StringBuffer response = new StringBuffer();
+                StringBuilder response = new StringBuilder();
                 while ((line = rd.readLine()) != null) {
                     response.append(line);
-                    response.append('\r');
                 }
                 rd.close();
                 lastvideoonpeertube = response.toString();
@@ -170,19 +162,19 @@ public class ProcService extends JobService {
                     Log.i("ProcService", "ERROR while reading local file : " + e.toString());
                 }
 
-                //boolean isTheSame = lastvideoonpeertube.equals(text.toString());  -- not working
-                Pattern word = Pattern.compile(text.toString());
-                Matcher match = word.matcher(lastvideoonpeertube);
+                boolean isTheSame = true;
+                if (lastvideoonpeertube != null) {
+                    isTheSame = text.toString().equals(lastvideoonpeertube);  // is working
+                }
 
-
-                if (match.find()) {
+                if (isTheSame) {
                     // Last video is the same as local, nothing more to do.
-                    Log.i("ProcService", "Last video is the same on peertube and local");
+                    Log.i(TAG, "Last video is the same on peertube and local");
                 } else {
                     // Last video and local are not the same, THERE IS A NEW VIDEO AVAILABLE
                     // LET'S NOTIFY OUR USER !!!
-                    Log.i("ProcService", "THERE IS A NEW VIDEO AVAILABLE : " + lastvideoonpeertube);
-                    Log.i("ProcService", "Old video stored lacally : " + text.toString());
+                    Log.i(TAG, "Old video stored lacally : " + text.toString());
+                    Log.i(TAG, "THERE IS A NEW VIDEO AVAILABLE : " + lastvideoonpeertube);
                     // update local file
                     try {
                         FileWriter out = new FileWriter(file);
@@ -237,23 +229,22 @@ public class ProcService extends JobService {
                     FileWriter out = new FileWriter(file);
                     out.write(lastvideoonpeertube);
                     out.close();
-                    Log.d("ProcService", "File proc_peertube_last_video.dat didn't exists so we create a new one with last video : " + lastvideoonpeertube);
+                    Log.d(TAG, "File proc_peertube_last_video.dat didn't exists so we create a new one with last video : " + lastvideoonpeertube);
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.d("ProcService", "Error while creating local file : " + e.toString());
+                    Log.e(TAG, "IOException while creating local file : " + e.toString());
                 } catch (Exception e) {
-                    Log.d("ProcService", "Error while creating local file : " + e.toString());
+                    Log.e(TAG, "Exception while creating local file : " + e.toString());
                 }
             }
 
             // relaunch service
             ProcService.scheduleJob(getApplicationContext());
 
-        }
-        catch(Exception e) {
-            Log.d("ProcService", "Global error : " + e.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Global error : " + e.toString());
             // relaunch service
             ProcService.scheduleJob(getApplicationContext());
         }

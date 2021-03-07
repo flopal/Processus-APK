@@ -9,8 +9,7 @@
     <WebView
         android:id="@+id/procwebview"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-    </WebView>
+        android:layout_height="match_parent" />
 
 
     <LinearLayout
@@ -23,9 +22,9 @@
         <LinearLayout
             android:id="@+id/discordwrapper"
             android:layout_width="100dp"
-            android:layout_height="100dp"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:gravity="right|bottom"
+            android:gravity="end|bottom"
             android:orientation="vertical"
             android:visibility="visible">
 
@@ -34,8 +33,7 @@
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginBottom="20dp"
-                android:layout_weight="0"
-                android:gravity="left|bottom"
+                android:gravity="start|bottom"
                 android:orientation="vertical"
                 android:visibility="visible">
 
@@ -45,6 +43,7 @@
                     android:layout_width="fill_parent"
                     android:layout_height="fill_parent"
                     android:background="@null"
+                    android:contentDescription="@string/discord_img_button"
                     android:scaleType="fitEnd"
                     app:srcCompat="@drawable/discordicon" />
             </LinearLayout>
@@ -54,8 +53,7 @@
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginBottom="20dp"
-                android:layout_weight="0"
-                android:gravity="left|bottom"
+                android:gravity="start|bottom"
                 android:orientation="vertical"
                 android:visibility="visible">
 
@@ -65,6 +63,7 @@
                     android:layout_width="fill_parent"
                     android:layout_height="fill_parent"
                     android:background="@null"
+                    android:contentDescription="@string/email_image_button"
                     android:scaleType="fitCenter"
                     android:visibility="visible"
                     app:srcCompat="@drawable/mailv2" />
