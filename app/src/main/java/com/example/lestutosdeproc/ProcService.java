@@ -21,7 +21,6 @@ import com.proc.lestutosdeproc.R;
 import org.xml.sax.ContentHandler;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -58,24 +57,17 @@ public class ProcService extends JobService {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         String lastvideoonpeertube = null;
-        URL url;
         HttpURLConnection connection = null;
         try {
             //Create connection
-            url = new URL("https://lestutosdeprocessus.fr/get_last_video_on_peertube.php");
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type",
-                    "application/x-www-form-urlencoded");
-            connection.setRequestProperty("Content-Language", "fr-FR");
-            connection.setUseCaches(false);
-            connection.setDoInput(true);
-            connection.setDoOutput(true);
-            //Send request
-            DataOutputStream wr = new DataOutputStream(
-                    connection.getOutputStream());
-            wr.flush();
-            wr.close();
+            connection = buildConnectionVariable(new URL("https://lestutosdeprocessus.fr/get_last_video_on_peertube.php"));
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                Log.e(TAG, "An error occured during connection : " + responseCode);
+                throw new Exception("Response code not OK : reponse code = " + responseCode);
+            }
+
             //Get Response
             InputStream is = connection.getInputStream();
             BufferedReader rd = new BufferedReader(new InputStreamReader(is));
@@ -117,51 +109,29 @@ public class ProcService extends JobService {
                 Log.i(TAG, "ERROR while reading local file : " + e.toString());
             }
 
-
-            boolean isTheSame = false;
             if (lastvideoonpeertube != null) {
-                isTheSame = text.toString().equals(lastvideoonpeertube);  // is working
-            }
-            if (isTheSame) {
-                // Last video is the same as local, nothing more to do.
-                Log.i(TAG, "Last video is the same on peertube and local");
-            } else {
-                // Last video and local are not the same, THERE IS A NEW VIDEO AVAILABLE
-                // LET'S NOTIFY OUR USER !!!
-                Log.i(TAG, "Old video stored lacally : " + text.toString());
-                Log.i(TAG, "THERE IS A NEW VIDEO AVAILABLE : " + lastvideoonpeertube);
-                // update local file
-                try {
-                    FileWriter out = new FileWriter(file);
-                    out.write(lastvideoonpeertube);
-                    out.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                boolean isTheSame = text.toString().equals(lastvideoonpeertube);  // is working
+                if (isTheSame) {
+                    // Last video is the same as local, nothing more to do.
+                    Log.i(TAG, "Last video is the same on peertube and local");
+                    return true;
                 }
-                // create notification
-                NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                String NOTIFICATION_CHANNEL_ID = "Proc_channel_id";
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    int importance = NotificationManager.IMPORTANCE_LOW;
-                    String NOTIFICATION_CHANNEL_NAME = "Proc_channel_name";
-                    NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, importance);
-                    notificationChannel.enableLights(true);
-                    notificationChannel.setLightColor(Color.RED);
-                    notificationChannel.enableVibration(true);
-                    notificationChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-                    mNotificationManager.createNotificationChannel(notificationChannel);
-                }
-                NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_peertube)
-                        .setContentTitle("Peertube des Tutos de Processus")
-                        .setContentText("Une nouvelle vidéo est disponible : " + lastvideoonpeertube)
-                        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                Intent intent = new Intent(this, MainActivity.class);
-                @SuppressLint("WrongConstant") PendingIntent pi = PendingIntent.getActivity(this, 0, intent, Intent.FLAG_ACTIVITY_NEW_TASK);
-                mBuilder.setContentIntent(pi);
-                notificationManager.notify((int) (System.currentTimeMillis() / 1000), mBuilder.build());
             }
+
+            // Last video and local are not the same, THERE IS A NEW VIDEO AVAILABLE
+            // LET'S NOTIFY OUR USER !!!
+            Log.i(TAG, "Old video stored lacally : " + text.toString());
+            Log.i(TAG, "THERE IS A NEW VIDEO AVAILABLE : " + lastvideoonpeertube);
+            // update local file
+            try {
+                FileWriter out = new FileWriter(file);
+                out.write(lastvideoonpeertube);
+                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            // create notification
+            CreateNotification(lastvideoonpeertube);
         } else {
             // if file doesn't exists, let's create it
             try {
@@ -180,9 +150,43 @@ public class ProcService extends JobService {
             }
         }
 
-
         return true;
     }
 
+    private void CreateNotification(String lastvideoonpeertube) {
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        String NOTIFICATION_CHANNEL_ID = "Proc_channel_id";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            int importance = NotificationManager.IMPORTANCE_LOW;
+            String NOTIFICATION_CHANNEL_NAME = "Proc_channel_name";
+            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, importance);
+            notificationChannel.enableLights(true);
+            notificationChannel.setLightColor(Color.RED);
+            notificationChannel.enableVibration(true);
+            notificationChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mNotificationManager.createNotificationChannel(notificationChannel);
+        }
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_peertube)
+                .setContentTitle("Peertube des Tutos de Processus")
+                .setContentText("Une nouvelle vidéo est disponible : " + lastvideoonpeertube)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Intent intent = new Intent(this, MainActivity.class);
+        @SuppressLint("WrongConstant") PendingIntent pi = PendingIntent.getActivity(this, 0, intent, Intent.FLAG_ACTIVITY_NEW_TASK);
+        mBuilder.setContentIntent(pi);
+        notificationManager.notify((int) (System.currentTimeMillis() / 1000), mBuilder.build());
+    }
 
+    private HttpURLConnection buildConnectionVariable(URL url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type",
+                "application/x-www-form-urlencoded");
+        connection.setRequestProperty("Content-Language", "fr-FR");
+        connection.setUseCaches(false);
+        connection.setDoInput(true);
+        connection.setDoOutput(true);
+        return connection;
+    }
 }

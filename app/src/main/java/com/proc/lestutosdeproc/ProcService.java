@@ -27,7 +27,6 @@ import androidx.core.app.NotificationCompat;
 import org.xml.sax.ContentHandler;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -103,24 +102,16 @@ public class ProcService extends JobService {
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
             StrictMode.setThreadPolicy(policy);
             String lastvideoonpeertube = null;
-            URL url;
             HttpURLConnection connection = null;
             try {
                 //Create connection
-                url = new URL("https://lestutosdeprocessus.fr/get_last_video_on_peertube.php");
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type",
-                        "application/x-www-form-urlencoded");
-                connection.setRequestProperty("Content-Language", "fr-FR");
-                connection.setUseCaches(false);
-                connection.setDoInput(true);
-                connection.setDoOutput(true);
-                //Send request
-                DataOutputStream wr = new DataOutputStream(
-                        connection.getOutputStream());
-                wr.flush();
-                wr.close();
+                connection = buildConnectionVariable(new URL("https://lestutosdeprocessus.fr/get_last_video_on_peertube.php"));
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    Log.e(TAG, "An error occured during connection : " + responseCode);
+                    throw new Exception("Response code not OK : reponse code = " + responseCode);
+                }
                 //Get Response
                 InputStream is = connection.getInputStream();
                 BufferedReader rd = new BufferedReader(new InputStreamReader(is));
@@ -162,66 +153,40 @@ public class ProcService extends JobService {
                     Log.i("ProcService", "ERROR while reading local file : " + e.toString());
                 }
 
-                boolean isTheSame = true;
                 if (lastvideoonpeertube != null) {
-                    isTheSame = text.toString().equals(lastvideoonpeertube);  // is working
+                    boolean isTheSame = text.toString().equals(lastvideoonpeertube);  // is working
+                    if (isTheSame) {
+                        // Last video is the same as local, nothing more to do.
+                        Log.i(TAG, "Last video is the same on peertube and local");
+                        ProcService.scheduleJob(getApplicationContext());
+                        return true;
+                    }
                 }
 
-                if (isTheSame) {
-                    // Last video is the same as local, nothing more to do.
-                    Log.i(TAG, "Last video is the same on peertube and local");
-                } else {
-                    // Last video and local are not the same, THERE IS A NEW VIDEO AVAILABLE
-                    // LET'S NOTIFY OUR USER !!!
-                    Log.i(TAG, "Old video stored lacally : " + text.toString());
-                    Log.i(TAG, "THERE IS A NEW VIDEO AVAILABLE : " + lastvideoonpeertube);
-                    // update local file
-                    try {
-                        FileWriter out = new FileWriter(file);
-                        out.write(lastvideoonpeertube);
-                        out.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    // create notification
-                    // Logic to turn on the screen
-                    if (!powerManager.isInteractive()) { // if screen is not already on, turn it on (get wake_lock for 10 seconds)
-                        @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE, "MH24_SCREENLOCK");
-                        wl.acquire(10000);
-                        @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl_cpu = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MH24_SCREENLOCK");
-                        wl_cpu.acquire(10000);
-                    }
-                    Toast.makeText(this, "NEW VIDEO AVAILABLE !", Toast.LENGTH_SHORT).show();
-                    NotificationManager mNotificationManagerDebug = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    String NOTIFICATION_CHANNEL_ID_DEBUG = "Proc_channel_id";
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        int importanceDebug = NotificationManager.IMPORTANCE_HIGH;
-                        String NOTIFICATION_CHANNEL_NAME = "Proc_channel_name";
-                        NotificationChannel notificationChannelDebug = new NotificationChannel(NOTIFICATION_CHANNEL_ID_DEBUG, NOTIFICATION_CHANNEL_NAME, importanceDebug);
-                        notificationChannelDebug.enableLights(true);
-                        notificationChannelDebug.setLightColor(Color.RED);
-                        notificationChannelDebug.enableVibration(true);
-                        notificationChannelDebug.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-                        mNotificationManagerDebug.createNotificationChannel(notificationChannelDebug);
-                    }
-                    final long[] DEFAULT_VIBRATE_PATTERN = {0, 250, 250, 250};
-                    NotificationCompat.Builder mBuilderDebug = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID_DEBUG)
-                            .setSmallIcon(R.drawable.ic_peertube)
-                            .setContentTitle("Peertube des Tutos de Processus")
-                            .setContentText("Une nouvelle vidéo est disponible : " + lastvideoonpeertube)
-                            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                            .setVibrate(DEFAULT_VIBRATE_PATTERN)
-                            .setSound(Settings.System.DEFAULT_NOTIFICATION_URI)
-                            .setLights(Color.WHITE, 2000, 3000)
-                            .setSound(Settings.System.DEFAULT_NOTIFICATION_URI);
-
-                    NotificationManager notificationManagerDebug = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-                    Intent intentDebug = new Intent(this, MainActivity.class);
-                    @SuppressLint("WrongConstant") PendingIntent piDebug = PendingIntent.getActivity(this, 0, intentDebug, Intent.FLAG_ACTIVITY_NEW_TASK);
-                    mBuilderDebug.setContentIntent(piDebug);
-                    notificationManagerDebug.notify((int) (System.currentTimeMillis() / 1000), mBuilderDebug.build());
+                // Last video and local are not the same, THERE IS A NEW VIDEO AVAILABLE
+                // LET'S NOTIFY OUR USER !!!
+                Log.i(TAG, "Old video stored lacally : " + text.toString());
+                Log.i(TAG, "THERE IS A NEW VIDEO AVAILABLE : " + lastvideoonpeertube);
+                // update local file
+                try {
+                    FileWriter out = new FileWriter(file);
+                    out.write(lastvideoonpeertube);
+                    out.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+
+                // Logic to turn on the screen
+                if (!powerManager.isInteractive()) { // if screen is not already on, turn it on (get wake_lock for 10 seconds)
+                    @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE, "MH24_SCREENLOCK");
+                    wl.acquire(10000);
+                    @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl_cpu = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MH24_SCREENLOCK");
+                    wl_cpu.acquire(10000);
+                }
+                Toast.makeText(this, "NEW VIDEO AVAILABLE !", Toast.LENGTH_SHORT).show();
+
+                // create notification
+                createNotification(lastvideoonpeertube);
             } else {
                 // if file doesn't exists, let's create it
                 try {
@@ -252,4 +217,47 @@ public class ProcService extends JobService {
         return true;
     }
 
+    private void createNotification(String lastvideoonpeertube) {
+        NotificationManager mNotificationManagerDebug = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        String NOTIFICATION_CHANNEL_ID_DEBUG = "Proc_channel_id";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            int importanceDebug = NotificationManager.IMPORTANCE_HIGH;
+            String NOTIFICATION_CHANNEL_NAME = "Proc_channel_name";
+            NotificationChannel notificationChannelDebug = new NotificationChannel(NOTIFICATION_CHANNEL_ID_DEBUG, NOTIFICATION_CHANNEL_NAME, importanceDebug);
+            notificationChannelDebug.enableLights(true);
+            notificationChannelDebug.setLightColor(Color.RED);
+            notificationChannelDebug.enableVibration(true);
+            notificationChannelDebug.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            mNotificationManagerDebug.createNotificationChannel(notificationChannelDebug);
+        }
+        final long[] DEFAULT_VIBRATE_PATTERN = {0, 250, 250, 250};
+        NotificationCompat.Builder mBuilderDebug = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID_DEBUG)
+                .setSmallIcon(R.drawable.ic_peertube)
+                .setContentTitle("Peertube des Tutos de Processus")
+                .setContentText("Une nouvelle vidéo est disponible : " + lastvideoonpeertube)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setVibrate(DEFAULT_VIBRATE_PATTERN)
+                .setSound(Settings.System.DEFAULT_NOTIFICATION_URI)
+                .setLights(Color.WHITE, 2000, 3000)
+                .setSound(Settings.System.DEFAULT_NOTIFICATION_URI);
+
+        NotificationManager notificationManagerDebug = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Intent intentDebug = new Intent(this, MainActivity.class);
+        @SuppressLint("WrongConstant") PendingIntent piDebug = PendingIntent.getActivity(this, 0, intentDebug, Intent.FLAG_ACTIVITY_NEW_TASK);
+        mBuilderDebug.setContentIntent(piDebug);
+        notificationManagerDebug.notify((int) (System.currentTimeMillis() / 1000), mBuilderDebug.build());
+    }
+
+    private HttpURLConnection buildConnectionVariable(URL url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setRequestProperty("Content-Type",
+                "application/x-www-form-urlencoded");
+        connection.setRequestProperty("Content-Language", "fr-FR");
+        connection.setUseCaches(false);
+        connection.setDoInput(true);
+        connection.setDoOutput(true);
+        return connection;
+    }
 }
